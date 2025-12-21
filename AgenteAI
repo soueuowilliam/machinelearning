@@ -1,26 +1,54 @@
-from langchain_openai import ChatOpenAI
-from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
-from langchain_core.prompts import PromptTemplate
+#LANGCHAIN IMPORTS
+from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_community.vectorstores import Chroma
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from langchain_core.documents import Document
+from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
 from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
-from pydantic import Field, BaseModel
-from dotenv import load_dotenv
+from langchain_core.globals import set_debug
+
+#set_debug(True)
+
+#IMPORT SYSTEM
 import os
+from dotenv import load_dotenv
+from pydantic import Field, BaseModel
 
-os.environ['HUGGINGFACEHUB_API_TOKEN'] = 'hf_xxx'
+#API KEY GOOGLE GEMINI
+os.environ['GOOGLE_API_KEY'] = 'AIzaSyCKW3o5Hr5qRM7Apsy2b8QFpUKimeHfDj4'
 
-class Cidades(BaseModel):
-    cidade:str = Field('Uma cidade no Brasil para viajar e conhecer')
-    motivo:str = Field('O motivo é levar minha família.')
+#MODELO DE INTELIGÊNCIA ARTIFICAL
+llm = ChatGoogleGenerativeAI(model = 'gemini-2.5-flash', temperature = 0.5)
 
-parseador = JsonOutputParser(pydantic_object = Cidades)    
-prompt = PromptTemplate( template = 'Sugira uma cidade dado o meu interesse por {interesse}, onde tenha hoteis próximos.\n {saida}',
-                        input_variables = ['interesse'],
-                        partial_variables = {'saida':parseador.get_format_instructions()})
+#INSTRUÇÕES PARA A LLM
+class Destino(BaseModel):
+    cidade:str = Field('A cidade recomendada para visitar')
+    motivo:str = Field('O motivo é uma viagem com a familia')
 
-llm = HuggingFaceEndpoint( model = 'HuggingFaceH4/zephyr-7b-beta', temperature = 0.5, max_new_tokens = 512)
-chat = ChatHuggingFace(llm = llm )
+class Restaurante(BaseModel):
+    cidade:str = Field('A cidade recomendada para visitar')
+    restaurante:str = Field('Restaurantes recomendados na cidade')
 
-cadeia = prompt | chat | parseador
+txt_cidade = 'Sugira uma cidade dado o meu interesse por {interesse}.\n {saida}'
+parseador_cidade = JsonOutputParser(pydantic_object = Destino)
+template_cidade = PromptTemplate(template = txt_cidade, input_variables = ['interesse'], partial_variables = {'saida':parseador_cidade.get_format_instructions()})
 
-resposta = cadeia.invoke({'interesse':'frio'})
+txt_restaurante = 'Sugira restaurantes populares entre locais em {cidade}.\n {saida}'
+parseador_restaurante = JsonOutputParser(pydantic_object = Restaurante)
+template_restaurante = PromptTemplate(template = txt_restaurante, partial_variables = {'saida':parseador_restaurante.get_format_instructions()})
+
+txt_cultural = 'Sugira atividades e locais culturais em {cidade}'
+template_cultural = PromptTemplate(template = txt_cultural)
+
+#CADEIA DE SEQUENCIA
+chain_cidade = template_cidade | llm | parseador_cidade
+chain_restaurante = template_restaurante | llm | parseador_restaurante
+chain_cultural = template_cultural | llm | StrOutputParser()
+
+#CADEIA PRINCIPAL
+chain = (chain_cidade | chain_restaurante | chain_cultural)
+
+#RESULTADO DA PERGUNTA
+resposta = chain.invoke({'interesse' : 'praias'})
 print(resposta)
+
