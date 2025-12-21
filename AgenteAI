@@ -15,10 +15,10 @@ from dotenv import load_dotenv
 from pydantic import Field, BaseModel
 
 #API KEY GOOGLE GEMINI
-os.environ['GOOGLE_API_KEY'] = 'AIzaSyCKW3o5Hr5qRM7Apsy2b8QFpUKimeHfDj4'
+key = os.getenv['GOOGLE_API_KEY']
 
 #MODELO DE INTELIGÊNCIA ARTIFICAL
-llm = ChatGoogleGenerativeAI(model = 'gemini-2.5-flash', temperature = 0.5)
+llm = ChatGoogleGenerativeAI(model = 'gemini-2.5-flash', temperature = 0.5, api_key = key)
 
 #INSTRUÇÕES PARA A LLM
 class Destino(BaseModel):
