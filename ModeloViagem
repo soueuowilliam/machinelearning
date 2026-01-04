@@ -1,0 +1,77 @@
+Travel Recommender com LangChain & Google Gemini
+Este projeto utiliza LangChain e a API do Google Gemini para criar um sistema inteligente de recomendações de viagem. Através de cadeias sequenciais (chains), o script sugere um destino, restaurantes locais e atividades culturais com base nos interesses do usuário.
+
+🚀 Funcionalidades
+Extração Estruturada: Utiliza Pydantic para garantir que as saídas de IA sigam um formato JSON rigoroso.
+Encadeamento Sequencial (LCEL): Conecta múltiplas chamadas de IA onde a saída de uma etapa (ex: cidade escolhida) serve como entrada para a próxima (ex: busca de restaurantes).
+Integração com Gemini: Implementado com o modelo gemini-2.5-flash para respostas rápidas e precisas.
+
+🛠️ Tecnologias Utilizadas
+Python 3.10+
+LangChain: Framework para desenvolvimento de aplicações baseadas em LLMs.
+Google Generative AI: Modelo de linguagem Gemini.
+Pydantic: Validação de dados e criação de esquemas JSON.
+Python-dotenv: Gerenciamento de variáveis de ambiente.
+
+📋 Estrutura do Código
+1. Definição de Esquemas (Pydantic)
+O código define duas estruturas principais para garantir que a IA retorne dados organizados:
+
+Cidade: Captura o nome do destino e a justificativa da escolha.
+Restaurante: Captura recomendações gastronômicas específicas para a cidade selecionada.
+
+2. Fluxo de Execução (Chain)
+A lógica é dividida em três elos principais conectados pelo operador pipe (|):
+
+chain_cidade: Recebe o interesse do usuário e decide o melhor destino.
+chain_restaurante: Recebe a cidade da etapa anterior e sugere locais para comer.
+chain_cultural: Finaliza o roteiro sugerindo pontos culturais em texto livre.
+
+
+
+#IMPORT LANGCHAIN
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
+from langchain_core.globals import set_debug
+
+#IMPORT SYSTEM
+from pydantic import Field, BaseModel
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+key = os.getenv('GOOGLE_API_KEY')
+
+modelo = ChatGoogleGenerativeAI(model = 'gemini-2.5-flash', temperature = 0.5, api_key = key)
+
+
+class Cidade(BaseModel):
+    cidade:str = Field('A cidade recomendada para visitar')
+    motivo:str = Field('O motivo pelo qual é interessante visitar essa cidade')
+
+parseador_cidade = JsonOutputParser(pydantic_object = Cidade)
+txt_cidade = PromptTemplate(template = '''Crie um roteiro de viagem do meu interesse por{interesse}
+                            Formato de saída: {formato_saida}''',
+                            input_variables = ['interesse'],
+                            partial_variables = {'formato_saida':parseador_cidade.get_format_instructions()})
+
+class Restaurante(BaseModel):
+    cidade:str = Field('A cidade recomendada para visitar')
+    motivo:str = Field('Restaurante recomendados na cidade')
+
+parseador_restaurante = JsonOutputParser(pydantic_object = Restaurante)
+txt_restaurante = PromptTemplate(template = 'Sugira restaurantes populares entre locais em {cidade}\n Formato de Saída: {formato_saida}',
+                                 input_variables = ['cidade'],
+                                 partial_variables = {'formato_saida': parseador_restaurante.get_format_instructions()})
+
+txt_cultural = PromptTemplate( template = 'Sugira atividades em locais culturais em {cidade}' )
+
+chain_cidade = txt_cidade | modelo | parseador_cidade
+chain_restaurante = txt_restaurante | modelo | parseador_restaurante
+chain_cultural = txt_cultural | modelo | StrOutputParser()
+
+chain = (chain_cidade | chain_restaurante | chain_cultural)
+
+resposta = chain.invoke({'interesse':'praias'})
+print(resposta)
