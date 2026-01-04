@@ -1,0 +1,98 @@
+Este projeto implementa um sistema de inteligência artificial de múltiplos agentes utilizando LangGraph, LangChain e o modelo Gemini 2.5 Flash. O sistema atua como um triador inteligente que identifica o interesse do usuário e direciona a conversa para o especialista mais adequado (Praia ou Montanha).
+
+🚀 Diferenciais do Projeto
+Roteamento Estruturado: Utiliza a função with_structured_output para garantir que o modelo tome decisões lógicas precisas, em vez de apenas gerar texto livre.
+Arquitetura de Grafo de Estados: Implementado com StateGraph, permitindo um controle refinado sobre o fluxo da conversa e transições condicionais.
+Execução Assíncrona: Totalmente construído sobre asyncio, permitindo chamadas escaláveis e de alta performance para APIs de LLM.
+Especialização de Personas: Cada nó do grafo possui um sistema de prompt exclusivo (Sr. Praia e Sr. Montanha), garantindo respostas contextuais e personalizadas.
+
+🏗️ Arquitetura do Sistema
+O fluxo de dados segue um grafo cíclico direcionado, onde cada etapa é um "nó" de processamento:
+START: Recebe a pergunta do usuário (query).
+Nó Roteador (rotear): O Gemini analisa a entrada e retorna um objeto JSON classificando o destino como praia ou montanha.
+Aresta Condicional (escolher_no): Uma lógica de controle avalia o estado atual e decide o próximo caminho.
+
+Nós Especialistas:
+no_praia: Aciona a persona Sr. Praia.
+no_montanha: Aciona a persona Sr. Montanha.
+END: Consolida o estado final e encerra a execução.
+
+===============================================================================================================================================================================
+
+#IMPORT LANGCHAIN
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableConfig
+from langgraph.graph import StateGraph, START, END
+
+#IMPORT SYSTEM
+from typing import Literal, TypedDict
+from dotenv import load_dotenv
+import asyncio
+import os
+
+load_dotenv()
+key = os.getenv('GOOGLE_API_KEY')
+
+modelo = ChatGoogleGenerativeAI(model = 'gemini-2.5-flash', temperature = 0.5, api_key = key)
+
+consultor_praia = ChatPromptTemplate([
+    ('system', 'Apresente-se como Sr. Praia. Você é um especialista em viagens com destinos a praia.'),
+    ('human', '{query}')
+])
+
+consultor_montanha = ChatPromptTemplate([
+    ('system', 'Apresente-se como Sr. Montanha. Você é um especialista em viagens com destinos a montanhas'),
+    ('human', '{query}')
+])
+
+chain_praia = consultor_praia | modelo | StrOutputParser()
+chain_montanha = consultor_montanha | modelo | StrOutputParser()
+
+class Rota(TypedDict):
+    destino: Literal['praia', 'montanha'] 
+
+prompt_roteador = ChatPromptTemplate.from_messages([
+    ('system', 'Recomende apenas com praia ou montanha'),
+    ('human', '{query}')
+])
+
+roteador = prompt_roteador | modelo.with_structured_output(Rota)
+
+class Estado(TypedDict):
+    query : str
+    destino : Rota
+    resposta : str
+
+async def no_roteador(estado: Estado, config = RunnableConfig):
+    return {'destino': await roteador.ainvoke({'query': estado['query']}, config)}
+
+async def no_praia(estado: Estado, config = RunnableConfig):
+    return {'destino': await chain_praia.ainvoke({'query': estado['query']}, config)}
+
+async def no_montanha(estado: Estado, config = RunnableConfig):
+    return {'destino': await chain_montanha.ainvoke({'query': estado['query']}, config)}
+
+def escolher_no(estado: Estado) -> Literal['praia', 'montanha']:
+    return 'praia' if estado['destino']['destino'] == 'praia' else 'montanha'
+
+grafo = StateGraph(Estado)
+grafo.add_node('rotear', no_roteador)
+grafo.add_node('praia', no_praia)
+grafo.add_node('montanha', no_montanha)
+
+grafo.add_edge(START, 'rotear')
+grafo.add_conditional_edges('rotear', escolher_no)
+grafo.add_edge('praia', END)
+grafo.add_edge('montanha', END)
+
+app = grafo.compile()
+
+async def main():
+    resposta = await app.ainvoke(
+        {'query': 'Quero visitar um lugar no Brasil famoso por praias e culturas'}
+    )
+    print(resposta)
+
+asyncio.run(main())
