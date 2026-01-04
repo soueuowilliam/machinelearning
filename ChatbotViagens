@@ -1,0 +1,75 @@
+Sr. Passeador: Chatbot de Viagens com Memória (LangChain + Gemini)
+Este repositório contém um assistente virtual conversacional especializado em turismo brasileiro. Diferente de bots comuns, o Sr. Passeador utiliza o gerenciamento de estado do LangChain para manter o contexto da conversa, permitindo que o usuário faça perguntas de acompanhamento sem precisar repetir informações anteriores.
+
+🌟 Destaques
+Persona Customizada: Atua como um guia especializado chamado "Sr. Passeador".
+Gerenciamento de Sessão: Suporta múltiplas conversas independentes simultâneas através de IDs de sessão.
+Memória Contextual: Implementa InMemoryChatMessageHistory para lembrar destinos e preferências mencionadas durante o chat.
+Integração com Gemini 2.5 Flash: Processamento de linguagem natural de última geração para respostas rápidas e precisas.
+
+🏗️ Arquitetura do Sistema
+O fluxo de dados funciona através do componente RunnableWithMessageHistory, que atua como um intermediário entre o usuário e o modelo de IA:
+Input: O usuário envia uma pergunta.
+Recuperação: O sistema busca o histórico de mensagens associado ao session_id.
+Aumentação: O histórico é injetado no prompt através do placeholder {historico}.
+Geração: O modelo Gemini gera a resposta baseada na pergunta atual + contexto anterior.
+Armazenamento: A nova interação é salva na memória para a próxima pergunta.
+
+🛠️ Tecnologias e Bibliotecas
+LangChain Core & Google GenAI: Motor de orquestração e interface com a IA.
+Pydantic: Para validação de esquemas de dados.
+Python-dotenv: Segurança de chaves de API.
+InMemoryChatMessageHistory: Armazenamento temporário de conversas em RAM.
+
+============================================================================================================================================
+
+#IMPORT LANGCHAIN
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
+from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.globals import set_debug
+
+#IMPORT SYSTEM
+from pydantic import Field, BaseModel
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+key = os.getenv('GOOGLE_API_KEY')
+
+modelo = ChatGoogleGenerativeAI(model = 'gemini-2.5-flash', temperature = 0.5, api_key = key)
+sugestao = ChatPromptTemplate.from_messages([
+    ('system', 'Você é um guia de viagem especializado em destinos Brasileiros. Apresente-se como Sr. Passeador'),
+    ('placeholder', '{historico}'),
+    ('human', '{pergunta}')
+])
+
+memoria = {}
+sessao = 'langchain'
+
+def historico_sessao(sessao:str):
+    if sessao not in memoria:
+        memoria[sessao] = InMemoryChatMessageHistory()
+    return memoria[sessao]
+
+
+chain = sugestao | modelo | StrOutputParser()
+
+cadeia_memoria = RunnableWithMessageHistory(
+    runnable = chain,
+    get_session_history = historico_sessao,
+    input_messages_key = 'pergunta',
+    history_messages_key = 'historico'
+)
+
+question = [
+    'Quero visitar um lugar no Brasil, famoso por praias e culturas. Pode sugerir?',
+    'Qual a melhor época do ano para ir?'
+]
+
+
+for pergunta in question:
+    resposta = cadeia_memoria.invoke({'pergunta': pergunta}, config = {'session_id': sessao})
+    print(resposta)
