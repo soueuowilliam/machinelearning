@@ -73,7 +73,7 @@ def responder(pergunta: str):
     resposta = chain.invoke({'pergunta': pergunta, 'contexto': contexto, 'historico': history})
     memoria.save_context({'pergunta':pergunta}, {'resposta': resposta}) #SALVANDO O HISTÓRICO NA MEMÓRIA
     
-    fontes = "\n".join(f"{doc.metadata.get('source', 'N/A')} - página {doc.metadata.get('page', 'N/A')}" for doc in documento)
+    fontes = "\n".join(f"{doc.metadata.get('source', 'N/A')} - página {doc.metadata.get('page', 0) + 1}" for doc in documento)
 
     return f""" 
     RESPOSTA:
