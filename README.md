@@ -5,27 +5,17 @@ Sistema de Inteligência Artificial que lê, entende e permite buscar informaç�
 O objetivo é transformar documentos não estruturados em uma base de conhecimento consultável por linguagem natural.
 
 🎯 Problema que resolve
-
 Empresas possuem milhares de arquivos como:
-
 contratos
-
 manuais
-
 procedimentos
-
 relatórios
-
 documentos operacionais
 
 Esses arquivos:
-
 são difíceis de pesquisar
-
 exigem leitura manual
-
 geram retrabalho e perda de tempo
-
 Este sistema permite que o usuário faça perguntas como:
 
 “Onde fala sobre prazo de entrega?”
@@ -33,31 +23,19 @@ Este sistema permite que o usuário faça perguntas como:
 “Em qual página está a política de cancelamento?”
 
 E receba:
-
 o trecho
-
 a página
-
 o documento de origem
 
 🧠 Como funciona
-
 O projeto usa uma arquitetura RAG (Retrieval-Augmented Generation):
-
 📂 O usuário adiciona documentos (PDF, DOCX, TXT, imagens)
-
 🔍 O sistema extrai o texto (OCR quando necessário)
-
 ✂️ O texto é dividido em chunks
-
 🧮 Cada chunk vira um embedding
-
 🗄 Os embeddings são salvos em um banco vetorial
-
 🤖 O LLM recebe a pergunta + os trechos relevantes
-
 📌 A resposta vem com contexto real dos documentos
-
 🧱 Arquitetura
 
 LangChain → Orquestração do fluxo
