@@ -29,15 +29,14 @@ o documento de origem
 
 🧠 Como funciona
 O projeto usa uma arquitetura RAG (Retrieval-Augmented Generation):
-📂 O usuário adiciona documentos (PDF, DOCX, TXT, imagens)
-🔍 O sistema extrai o texto (OCR quando necessário)
-✂️ O texto é dividido em chunks
-🧮 Cada chunk vira um embedding
-🗄 Os embeddings são salvos em um banco vetorial
-🤖 O LLM recebe a pergunta + os trechos relevantes
-
-📌 A resposta vem com contexto real dos documentos
-🧱 Arquitetura
+  📂 O usuário adiciona documentos (PDF, DOCX, TXT, imagens)
+  🔍 O sistema extrai o texto (OCR quando necessário)
+  ✂️ O texto é dividido em chunks
+  🧮 Cada chunk vira um embedding
+  🗄 Os embeddings são salvos em um banco vetorial
+  🤖 O LLM recebe a pergunta + os trechos relevantes
+  📌 A resposta vem com contexto real dos documentos
+  🧱 Arquitetura
 
 LangChain → Orquestração do fluxo
 LLM (Gemini) → Interpretação e geração de respostas
