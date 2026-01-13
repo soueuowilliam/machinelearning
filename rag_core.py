@@ -15,7 +15,7 @@ import os
 
 load_dotenv()
 key = os.getenv('GOOGLE_API_KEY')
-os.environ.get('LANGSMITH_API_KEY')
+os.environ['GOOGLE_API_KEY'] = 'AIzaSyCI-ZdAj4ts0FMyjl6LUPb0-sdpcFMs_Dk'
 
 #EXTRAINDO OS DADOS
 caminho = r'c:/Users/willi/OneDrive/OneDrive - CH MASTER DATA/Intranet CH - RAG - TEST'
