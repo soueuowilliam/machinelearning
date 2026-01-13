@@ -1,116 +1,57 @@
-#LANGCHAIN IMPORTS
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_experimental.text_splitter import SemanticChunker
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+import os
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
-from langchain_community.document_loaders import PyPDFLoader, DirectoryLoader, Docx2txtLoader
-from langchain_classic.memory import ConversationBufferMemory
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from rag.embeddings import get_embeddings
+from langchain.chains import RetrievalQA
+from rag.loader import load_documents
+from rag.vectorstore import build_faiss
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from rag.embeddings import get_embeddings
 
-#SYSTEM IMPORTS
-from dotenv import load_dotenv
+
+
+def get_embeddings():
+    return GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    
+from langchain.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 import os
 
-load_dotenv()
-key = os.getenv('GOOGLE_API_KEY')
+def load_documents(folder="data"):
+    docs = []
+    for file in os.listdir(folder):
+        path = os.path.join(folder, file)
 
-#EXTRAINDO OS DADOS
-caminho = r'c:/Users/willi/OneDrive/OneDrive - CH MASTER DATA/Intranet CH - RAG - TEST'
-pdf = DirectoryLoader(caminho, glob = '**/*pdf', loader_cls = PyPDFLoader).load()
-word = DirectoryLoader(caminho, glob = '**/*docx', loader_cls= Docx2txtLoader).load()
-dados = pdf + word
+        if file.endswith(".pdf"):
+            docs.extend(PyPDFLoader(path).load())
+        elif file.endswith(".txt"):
+            docs.extend(TextLoader(path).load())
+        elif file.endswith(".docx"):
+            docs.extend(Docx2txtLoader(path).load())
 
-#CHUNCKS
-embeddings = GoogleGenerativeAIEmbeddings(model = 'text-embedding-004')
-chunk_semantic = SemanticChunker(embeddings, breakpoint_threshold_type = "percentile", breakpoint_threshold_amount = 95)
-chunk = chunk_semantic.split_documents(dados)
+    return docs
 
-#chunks = RecursiveCharacterTextSplitter(chunk_size = 500, chunk_overlap = 100).split_documents(dados)
+def build_faiss(documents):
+    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
+    chunks = splitter.split_documents(documents)
 
-#BANCO DE DADOS VETORIAL
-banco_vetorial = FAISS.from_documents(chunk, embeddings).as_retriever(search_kwargs = {'k': 4})
+    db = FAISS.from_documents(chunks, get_embeddings())
+    db.save_local("faiss_index")
 
-#MODELO DE LLM
-modelo = ChatGoogleGenerativeAI(model = 'gemini-2.5-flash', temperature = 0.5, google_api_key = key)
+docs = load_documents("data")
+build_faiss(docs)
 
-#HISTÓRICO DE CONVERSA
-memoria = ConversationBufferMemory(memory_key = 'historico', input_key = 'pergunta')
+print("FAISS criado com sucesso")
 
-#DEFININDO O QUE A RAG IRÁ FAZER
-prompt = ChatPromptTemplate.from_messages(
-    [
-        ("system",
-        """
-        Você é um assistente de RAG. 
-        
-        REGRAS:
-        -SEMPRE informe o nome do documento e a página
-        -Não informe o caminho do documento.
-        -Caso eu peça, faça uma análise dos documentos.
-        -Não invente informações, passe apenas o que está no documento.
-        -Se a resposta não estiver no contexto, diga claramente que não encontrou.
-        
-        Histórico da conversa:
-        {historico}
-        """)
-        ,
-        ('human',
-        """
-        Contexto:
-        {contexto}
-
-        Pergunta:
-        {pergunta}
-
-        Resposta:
-        """)
-    ]
-)
-
-def formatar_contexto(documentos):
-    textos = []
-
-    for doc in documentos:
-        arquivo = os.path.basename(doc.metadata.get("source", "N/A"))
-        pagina = doc.metadata.get("page")
-
-        pagina_txt = (
-            f"Página {pagina + 1}"
-            if pagina is not None
-            else "Página não aplicável"
-        )
-
-        textos.append(
-            f" >> Arquivo: {arquivo} | {pagina_txt}\n{doc.page_content}"
-        )
-
-    return "\n\n".join(textos)
-
-
-def carregar_historico(_):
-    return memoria.load_memory_variables({}).get('historico', '')
-
-chain = {
-    'contexto' : banco_vetorial | formatar_contexto,
-    'pergunta' : RunnablePassthrough(),
-    'historico': carregar_historico } | prompt | modelo | StrOutputParser()
-
-
-def responder(pergunta: str) -> str:
-    if pergunta.lower() in ["limpar", "reset", "clear"]:
-        memoria.clear()
-        return "🧹 Memória limpa. Pode começar uma nova conversa."
-
-    resposta = chain.invoke(pergunta)
-
-    memoria.save_context(
-        {"pergunta": pergunta},
-        {"resposta": resposta}
+def get_qa_chain():
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash",
+        temperature=0
     )
 
-    return resposta
+    db = FAISS.load_local("faiss_index", get_embeddings(), allow_dangerous_deserialization=True)
 
+    retriever = db.as_retriever(search_kwargs={"k": 4})
 
-#Como devo proceder caso tenha um item roubado?
+    return RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
