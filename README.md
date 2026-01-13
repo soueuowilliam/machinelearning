@@ -18,14 +18,14 @@ exigem leitura manual
 geram retrabalho e perda de tempo
 Este sistema permite que o usuário faça perguntas como:
 
-“Onde fala sobre prazo de entrega?”
-“Qual documento menciona multa contratual?”
+“Onde fala sobre prazo de entrega?” - 
+“Qual documento menciona multa contratual?” - 
 “Em qual página está a política de cancelamento?”
 
 E receba:
-o trecho
-a página
-o documento de origem
+o trecho,
+a página,
+o documento de origem.
 
 🧠 Como funciona
 O projeto usa uma arquitetura RAG (Retrieval-Augmented Generation):
@@ -44,7 +44,8 @@ O projeto usa uma arquitetura RAG (Retrieval-Augmented Generation):
   
   📌 A resposta vem com contexto real dos documentos
   
-  🧱 Arquitetura
+
+🧱 Arquitetura:
 
 LangChain → Orquestração do fluxo
 LLM (Gemini) → Interpretação e geração de respostas
@@ -56,17 +57,12 @@ RAG → Garante respostas baseadas nos documentos reais
 
 🛠 Tecnologias
 
-Python
-
-LangChain
-
-Google Generative AI (Gemini)
-
-FAISS / Milvus / ChromaDB
-
-OCR
-
-Processamento de PDFs e Word
+Python,
+LangChain,
+Google Generative AI (Gemini),
+FAISS / Milvus / ChromaDB,
+OCR,
+Processamento de PDFs e Word.
 
 📌 Funcionalidades
 
@@ -79,26 +75,16 @@ IA contextualizada nos próprios arquivos.
 
 🚀 Aplicações reais
 
-Suporte e atendimento ao cliente
-
-Jurídico e contratos
-
-Compliance e auditoria
-
-RH
-
-Operações e processos
-
-Base de conhecimento corporativa
+Suporte e atendimento ao cliente,
+Jurídico e contratos,
+Compliance e auditoria,
+RH,
+Operações e processos,
+Base de conhecimento corporativa.
 
 📈 Por que esse projeto é diferente
 
-Este não é um chatbot genérico.
-
 É um sistema corporativo de IA, capaz de:
-
-entender documentos reais
-
-lidar com grandes volumes
-
-responder com base em dados confiáveis
+entender documentos reais,
+lidar com grandes volumes,
+responder com base em dados confiáveis.
