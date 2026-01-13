@@ -35,6 +35,7 @@ O projeto usa uma arquitetura RAG (Retrieval-Augmented Generation):
 🧮 Cada chunk vira um embedding
 🗄 Os embeddings são salvos em um banco vetorial
 🤖 O LLM recebe a pergunta + os trechos relevantes
+
 📌 A resposta vem com contexto real dos documentos
 🧱 Arquitetura
 
