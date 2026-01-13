@@ -39,7 +39,6 @@ O projeto usa uma arquitetura RAG (Retrieval-Augmented Generation):
 🧱 Arquitetura
 
 LangChain → Orquestração do fluxo
-
 LLM (Gemini) → Interpretação e geração de respostas
 
 Embeddings → Representação semântica dos textos
